@@ -14,6 +14,59 @@ Drop-in REST API. Index documents, search with natural language, get ranked resu
 
 Reciprocal Rank Fusion combines the ranked lists without score normalization — no tuning of score scales needed.
 
+## Demo
+
+**Indexing 500 enterprise documents, then searching:**
+
+```
+$ curl -s http://localhost:8000/status | python -m json.tool
+
+{
+  "status": "ok",
+  "documents_indexed": 500
+}
+```
+
+**Query — hybrid retrieval in action:**
+
+```bash
+curl -s -X POST http://localhost:8000/search \
+  -H "Content-Type: application/json" \
+  -d '{"query": "how does ANF handle NFS failover during node outages?", "k": 3}' \
+  | python -m json.tool
+```
+
+```json
+{
+  "results": [
+    {
+      "text": "Azure NetApp Files uses an active-passive controller pair. On node failure, the passive controller takes over within 60 seconds with no client reconfiguration required. NFS sessions reconnect automatically after the failover window.",
+      "metadata": { "source": "docs/netapp-ha-guide.md", "section": "Failover Architecture" },
+      "score": 0.031746,
+      "retrieval": "hybrid"
+    },
+    {
+      "text": "ANF volume failover is transparent to NFS clients using NFSv4.1 session trunking. Ensure `nconnect=8` is set in mount options for optimal throughput during controller transitions.",
+      "metadata": { "source": "docs/netapp-mount-options.md", "section": "NFSv4.1 Best Practices" },
+      "score": 0.022831,
+      "retrieval": "hybrid"
+    },
+    {
+      "text": "Monitor failover events via Azure Monitor metric `VolumeConsumedSizePercentage`. Set an alert threshold at 80% to catch capacity issues before they compound during a controller transition.",
+      "metadata": { "source": "docs/monitoring-runbook.md", "section": "ANF Alerts" },
+      "score": 0.014285,
+      "retrieval": "dense"
+    }
+  ],
+  "total": 3,
+  "query": "how does ANF handle NFS failover during node outages?"
+}
+```
+
+The `retrieval` field shows which method found each result. Results marked `hybrid` were found by **both** dense and BM25 — those are your highest-confidence hits.
+
+---
+
 ## Quick Start
 
 ```bash
